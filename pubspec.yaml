@@ -2,6 +2,8 @@ name: quick_video_player
 description: "Reusable network video player and vertical short-form video feed."
 publish_to: 'none'
 version: 1.0.0+1
+homepage: https://github.com/me-siddarth/quick_video_player
+repository: https://github.com/me-siddarth/quick_video_player
 
 environment:
   sdk: ">=3.0.1 <4.0.0"
