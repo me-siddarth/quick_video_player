@@ -16,6 +16,7 @@ class QuickPlayerOverlay extends StatefulWidget {
     this.shareUrl,
     this.shareSubject,
     this.showLikeButton = true,
+    this.showShareButton = true,
     this.hideOverlay = false,
   });
 
@@ -30,6 +31,9 @@ class QuickPlayerOverlay extends StatefulWidget {
 
   /// Whether to show the like button
   final bool showLikeButton;
+
+  /// Whether to show the share button
+  final bool showShareButton;
 
   /// Whether to hide the entire overlay (for fullscreen mode)
   final bool hideOverlay;
@@ -102,17 +106,14 @@ class _QuickPlayerOverlayState extends State<QuickPlayerOverlay> {
                 },
                 child: RichText(
                   text: TextSpan(
-                    style: const TextStyle(
-                      color: Colors.white70,
-                      fontSize: 14,
-                    ),
+                    style: const TextStyle(color: Colors.white70, fontSize: 14),
                     children: [
                       TextSpan(
                         text: _isDescriptionExpanded
                             ? cleanDescription
                             : (cleanDescription.length > 100
-                                ? '${cleanDescription.substring(0, 100)}...'
-                                : cleanDescription),
+                                  ? '${cleanDescription.substring(0, 100)}...'
+                                  : cleanDescription),
                       ),
                       if (!_isDescriptionExpanded &&
                           cleanDescription.length > 100)
@@ -155,12 +156,13 @@ class _QuickPlayerOverlayState extends State<QuickPlayerOverlay> {
               size: 30,
             ),
           ),
-        if (widget.showLikeButton && widget.onLikePressed != null)
+        if (widget.showShareButton) ...[
           const SizedBox(height: 24),
-        _ShareIconButton(
-          url: widget.shareUrl ?? '',
-          subject: widget.shareSubject ?? '',
-        ),
+          _ShareIconButton(
+            url: widget.shareUrl ?? '',
+            subject: widget.shareSubject ?? '',
+          ),
+        ],
       ],
     );
   }
