@@ -45,6 +45,12 @@ class QuickPlayerOverlay extends StatefulWidget {
 class _QuickPlayerOverlayState extends State<QuickPlayerOverlay> {
   bool _isDescriptionExpanded = false;
 
+  void _toggleDescription() {
+    setState(() {
+      _isDescriptionExpanded = !_isDescriptionExpanded;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     if (widget.hideOverlay) {
@@ -52,6 +58,7 @@ class _QuickPlayerOverlayState extends State<QuickPlayerOverlay> {
     }
 
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
       children: [
         Expanded(child: _detailsSection()),
         const SizedBox(width: 16),
@@ -98,42 +105,82 @@ class _QuickPlayerOverlayState extends State<QuickPlayerOverlay> {
           Builder(
             builder: (context) {
               final cleanDescription = _stripHtml(widget.description!);
-              return GestureDetector(
-                onTap: () {
-                  setState(() {
-                    _isDescriptionExpanded = !_isDescriptionExpanded;
-                  });
-                },
-                child: RichText(
-                  text: TextSpan(
-                    style: const TextStyle(color: Colors.white70, fontSize: 14),
-                    children: [
-                      TextSpan(
-                        text: _isDescriptionExpanded
-                            ? cleanDescription
-                            : (cleanDescription.length > 100
-                                  ? '${cleanDescription.substring(0, 100)}...'
-                                  : cleanDescription),
+              final isTruncatable = cleanDescription.length > 100;
+              final maxExpandedHeight = MediaQuery.sizeOf(context).height * 0.6;
+
+              return AnimatedSize(
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeInOut,
+                alignment: Alignment.bottomCenter,
+                clipBehavior: Clip.hardEdge,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    AnimatedCrossFade(
+                      duration: const Duration(milliseconds: 200),
+                      crossFadeState: _isDescriptionExpanded
+                          ? CrossFadeState.showSecond
+                          : CrossFadeState.showFirst,
+                      firstCurve: Curves.easeOut,
+                      secondCurve: Curves.easeIn,
+                      sizeCurve: Curves.easeInOut,
+                      alignment: Alignment.bottomCenter,
+                      firstChild: GestureDetector(
+                        onTap: isTruncatable ? _toggleDescription : null,
+                        behavior: HitTestBehavior.opaque,
+                        child: RichText(
+                          text: TextSpan(
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 14,
+                            ),
+                            children: [
+                              TextSpan(
+                                text: isTruncatable
+                                    ? '${cleanDescription.substring(0, 100)}...'
+                                    : cleanDescription,
+                              ),
+                              if (isTruncatable)
+                                const TextSpan(
+                                  text: ' Read more',
+                                  style: TextStyle(
+                                    color: Colors.blue,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
                       ),
-                      if (!_isDescriptionExpanded &&
-                          cleanDescription.length > 100)
-                        const TextSpan(
-                          text: ' Read more',
+                      secondChild: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxHeight: maxExpandedHeight,
+                        ),
+                        child: SingleChildScrollView(
+                          child: Text(
+                            cleanDescription,
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    if (isTruncatable && _isDescriptionExpanded)
+                      GestureDetector(
+                        onTap: _toggleDescription,
+                        child: const Text(
+                          'Show less',
                           style: TextStyle(
                             color: Colors.blue,
                             fontWeight: FontWeight.w600,
+                            fontSize: 14,
                           ),
                         ),
-                      if (_isDescriptionExpanded)
-                        const TextSpan(
-                          text: ' Show less',
-                          style: TextStyle(
-                            color: Colors.blue,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                    ],
-                  ),
+                      ),
+                  ],
                 ),
               );
             },
@@ -144,26 +191,29 @@ class _QuickPlayerOverlayState extends State<QuickPlayerOverlay> {
   }
 
   Widget _sideActions() {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.start,
-      children: [
-        if (widget.showLikeButton && widget.onLikePressed != null)
-          InkWell(
-            onTap: widget.onLikePressed,
-            child: Icon(
-              widget.isLiked ? Icons.favorite : Icons.favorite_border,
-              color: widget.isLiked ? Colors.redAccent : Colors.white,
-              size: 30,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 24),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.start,
+        children: [
+          if (widget.showLikeButton && widget.onLikePressed != null)
+            InkWell(
+              onTap: widget.onLikePressed,
+              child: Icon(
+                widget.isLiked ? Icons.favorite : Icons.favorite_border,
+                color: widget.isLiked ? Colors.redAccent : Colors.white,
+                size: 30,
+              ),
             ),
-          ),
-        if (widget.showShareButton) ...[
-          const SizedBox(height: 24),
-          _ShareIconButton(
-            url: widget.shareUrl ?? '',
-            subject: widget.shareSubject ?? '',
-          ),
+          if (widget.showShareButton) ...[
+            const SizedBox(height: 24),
+            _ShareIconButton(
+              url: widget.shareUrl ?? '',
+              subject: widget.shareSubject ?? '',
+            ),
+          ],
         ],
-      ],
+      ),
     );
   }
 }
