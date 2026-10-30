@@ -50,7 +50,6 @@ class QuickVideoPlayer extends StatefulWidget {
     this.backgroundColor = Colors.black,
     this.thumbnailUrl,
     this.overlay,
-    this.sharedMuted,
     this.loadingIndicator,
     this.errorIndicator,
     this.controlsToShow = const [VideoPlayerControls.playPause],
@@ -116,9 +115,6 @@ class QuickVideoPlayer extends StatefulWidget {
 
   final Widget? overlay;
 
-  /// Shared across a feed so muting one reel mutes the next one too.
-  final ValueNotifier<bool>? sharedMuted;
-
   final Widget? loadingIndicator;
 
   final Widget? errorIndicator;
@@ -160,7 +156,6 @@ class _QuickVideoPlayerState extends State<QuickVideoPlayer>
   bool _isPlaying = false;
   bool _isBuffering = false;
   bool _hasError = false;
-  bool _missingVideo = false;
   String? _errorMessage;
   bool _showControls = false;
   bool _hasPlayedOnce = false;
@@ -175,15 +170,10 @@ class _QuickVideoPlayerState extends State<QuickVideoPlayer>
   final Set<int> _loggedMilestones = {};
   bool _has30SecondMilestone = false;
   bool _hasCompleted = false;
-  late final ValueNotifier<bool> _muted;
-  late final bool _ownsMuted;
 
   @override
   void initState() {
     super.initState();
-    _muted = widget.sharedMuted ?? ValueNotifier(false);
-    _ownsMuted = widget.sharedMuted == null;
-    _muted.addListener(_onMuted);
     _uniqueKey =
         'video_${DateTime.now().millisecondsSinceEpoch}_${widget.videoUrl.hashCode}';
     _videoListener = _getVideoListener;
@@ -191,18 +181,9 @@ class _QuickVideoPlayerState extends State<QuickVideoPlayer>
     _initializePlayPauseAnimation();
   }
 
-  void _onMuted() {
-    _controller?.setVolume(_muted.value ? 0 : 1);
-    if (mounted) setState(() {});
-  }
-
   void _initializeVideo() async {
     final trimmedUrl = widget.videoUrl.trim();
-    if (trimmedUrl.isEmpty) {
-      setState(() => _missingVideo = true);
-      return;
-    }
-    if (!trimmedUrl.startsWith('http')) {
+    if (trimmedUrl.isEmpty || !trimmedUrl.startsWith('http')) {
       setState(() {
         _hasError = true;
       });
@@ -247,7 +228,6 @@ class _QuickVideoPlayerState extends State<QuickVideoPlayer>
         ..setLooping(widget.looping)
         ..addListener(_videoListener!);
       await _controller?.initialize();
-      await _controller?.setVolume(_muted.value ? 0 : 1);
       setState(() {
         _isInitialized = true;
         _hasError = false;
@@ -492,8 +472,6 @@ class _QuickVideoPlayerState extends State<QuickVideoPlayer>
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     }
     WakelockPlus.disable();
-    _muted.removeListener(_onMuted);
-    if (_ownsMuted) _muted.dispose();
     if (_videoListener != null) {
       _controller?.removeListener(_videoListener!);
     }
@@ -511,61 +489,40 @@ class _QuickVideoPlayerState extends State<QuickVideoPlayer>
       onVisibilityChanged: _onVisibilityChanged,
       child: Container(
         color: widget.backgroundColor,
-        child: _missingVideo
-            ? _withOverlay(const SizedBox.expand())
-            : _hasError
-                ? _getErrorWidget
-                : !_isInitialized
-                    ? _getLoadingWidget
-                    : GestureDetector(
-                        onTap: _onVideoTap,
-                        child: LayoutBuilder(
-                          builder: (context, constraints) {
-                            return Stack(
-                              fit: StackFit.expand,
-                              children: [
-                                Center(
-                                  child: AspectRatio(
-                                    aspectRatio: widget.aspectRatio ??
-                                        _controller!.value.aspectRatio,
-                                    child: VideoPlayer(_controller!),
-                                  ),
+        child: _hasError
+            ? _getErrorWidget
+            : !_isInitialized
+                ? _getLoadingWidget
+                : GestureDetector(
+                    onTap: _onVideoTap,
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        return Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            Center(
+                              child: AspectRatio(
+                                aspectRatio: widget.aspectRatio ??
+                                    _controller!.value.aspectRatio,
+                                child: VideoPlayer(_controller!),
+                              ),
+                            ),
+                            if (widget.overlay != null)
+                              Positioned.fill(
+                                child: IgnorePointer(
+                                  ignoring: false,
+                                  child: widget.overlay!,
                                 ),
-                                if (widget.overlay != null)
-                                  Positioned.fill(
-                                    child: QuickPlayerScope(
-                                      muted: _muted,
-                                      isMuted: _muted.value,
-                                      child: widget.overlay!,
-                                    ),
-                                  ),
-                                _buildPlayPauseAnimation(),
-                                if (_showControls) ..._controlsOverlay(),
-                                if (widget.showProgress) _buildProgressBar(),
-                              ],
-                            );
-                          },
-                        ),
-                      ),
+                              ),
+                            _buildPlayPauseAnimation(),
+                            if (_showControls) ..._controlsOverlay(),
+                            if (widget.showProgress) _buildProgressBar(),
+                          ],
+                        );
+                      },
+                    ),
+                  ),
       ),
-    );
-  }
-
-  Widget _withOverlay(Widget child) {
-    final overlay = widget.overlay;
-    if (overlay == null) return child;
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        child,
-        Positioned.fill(
-          child: QuickPlayerScope(
-            muted: _muted,
-            isMuted: _muted.value,
-            child: overlay,
-          ),
-        ),
-      ],
     );
   }
 
@@ -949,28 +906,4 @@ class _QuickVideoPlayerState extends State<QuickVideoPlayer>
       ),
     );
   }
-}
-
-/// Mute state for an overlay drawn on top of [QuickVideoPlayer].
-class QuickPlayerScope extends InheritedWidget {
-  const QuickPlayerScope({
-    required this.muted,
-    required this.isMuted,
-    required super.child,
-  });
-
-  final ValueNotifier<bool> muted;
-  final bool isMuted;
-
-  static QuickPlayerScope? maybeOf(BuildContext context) {
-    return context.dependOnInheritedWidgetOfExactType<QuickPlayerScope>();
-  }
-
-  void toggleMute() {
-    muted.value = !muted.value;
-  }
-
-  @override
-  bool updateShouldNotify(QuickPlayerScope oldWidget) =>
-      isMuted != oldWidget.isMuted;
 }
