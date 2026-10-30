@@ -18,7 +18,6 @@ class QuickPlayerFeed<T> extends StatefulWidget {
     this.autoPlayNext = false,
     this.edgeOffset = 0,
     this.overlayBuilder,
-    this.expandOverlay = false,
     this.noMoreItemsIndicator,
     this.firstPageLoadingIndicator,
     this.itemLoadingIndicator,
@@ -27,12 +26,6 @@ class QuickPlayerFeed<T> extends StatefulWidget {
     this.onItemChanged,
     this.onVideoStarted,
     this.onDurationChanged,
-    this.onItemDurationChanged,
-    this.onPositionChanged,
-    this.onPlayPauseChanged,
-    this.onVideoCompleted,
-    this.onListEnded,
-    this.onListEndCancelled,
     this.videoIdBuilder,
     this.videoTitleBuilder,
     this.videoCategory,
@@ -44,25 +37,11 @@ class QuickPlayerFeed<T> extends StatefulWidget {
 
   final void Function(T item, int index)? onVideoStarted;
 
-  final void Function(T item, Duration position)? onPositionChanged;
-
-  final void Function(T item, bool isPlaying)? onPlayPauseChanged;
-
-  final void Function(T item)? onVideoCompleted;
-
-  /// Fires when the reader swipes past the last reel and nothing follows.
-  final VoidCallback? onListEnded;
-
-  /// Fires when they swipe back onto a reel before the list restarts.
-  final VoidCallback? onListEndCancelled;
-
   final void Function(T item, int index)? onItemChanged;
 
   final Future<void> Function()? onRefreshData;
 
   final void Function(Duration duration)? onDurationChanged;
-
-  final void Function(T item, Duration duration)? onItemDurationChanged;
 
   /// Paging controller to manage pagination
   final PagingController<int, T> controller;
@@ -100,9 +79,6 @@ class QuickPlayerFeed<T> extends StatefulWidget {
 
   final Widget Function(BuildContext, T, int)? overlayBuilder;
 
-  /// Lets the overlay cover the whole frame, including top controls.
-  final bool expandOverlay;
-
   final double? bottomPadding;
 
   /// Builder function to extract video ID from item for analytics
@@ -132,14 +108,6 @@ class QuickPlayerFeed<T> extends StatefulWidget {
 
 class _QuickPlayerFeedState<T> extends State<QuickPlayerFeed<T>> {
   final PageController _pageController = PageController(keepPage: true);
-  final ValueNotifier<bool> _sharedMuted = ValueNotifier(false);
-
-  @override
-  void dispose() {
-    _sharedMuted.dispose();
-    _pageController.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -183,12 +151,6 @@ class _QuickPlayerFeedState<T> extends State<QuickPlayerFeed<T>> {
           allowImplicitScrolling: widget.allowImplicitScrolling,
           addAutomaticKeepAlives: widget.addAutomaticKeepAlives,
           onPageChanged: (index) {
-            final count = state.items?.length ?? 0;
-            if (count > 0 && index >= count) {
-              widget.onListEnded?.call();
-            } else {
-              widget.onListEndCancelled?.call();
-            }
             if (widget.onItemChanged != null &&
                 index >= 0 &&
                 index < loadedItems.length) {
@@ -227,7 +189,6 @@ class _QuickPlayerFeedState<T> extends State<QuickPlayerFeed<T>> {
       clickAction: ClickAction.playPause,
       showControlsAlways: true,
       videoUrl: widget.videoUrlBuilder(item),
-      sharedMuted: _sharedMuted,
       videoId: widget.videoIdBuilder?.call(item),
       videoTitle: widget.videoTitleBuilder?.call(item),
       videoCategory: widget.videoCategory,
@@ -235,69 +196,47 @@ class _QuickPlayerFeedState<T> extends State<QuickPlayerFeed<T>> {
       allowSeek: widget.allowSeek,
       overlay: _buildOverlay(context, item, index),
       onPlay: () {
-        if (!_isVisiblePage(index) || widget.onVideoStarted == null) return;
-        widget.onVideoStarted!(item, index);
-      },
-      onPositionChanged: (position) {
-        if (!_isVisiblePage(index)) return;
-        widget.onPositionChanged?.call(item, position);
-      },
-      onPlayPauseChanged: (playing) {
-        if (!_isVisiblePage(index)) return;
-        widget.onPlayPauseChanged?.call(item, playing);
-      },
-      onDurationChanged: (duration) {
-        if (!_isVisiblePage(index)) return;
-        widget.onDurationChanged?.call(duration);
-        widget.onItemDurationChanged?.call(item, duration);
-      },
-      onFullscreenChanged: widget.onFullscreenChanged,
-      loadingIndicator: widget.itemLoadingIndicator,
-      onCompleted: () {
-        if (!_isVisiblePage(index)) return;
-        widget.onVideoCompleted?.call(item);
-        if (!widget.autoPlayNext) return;
-        final currentPage = _pageController.page?.round() ?? 0;
-        final nextIndex = currentPage + 1;
-        final loadedItems = <T>[];
-        final state = widget.controller.value;
-
-        try {
-          final dynamicState = state as dynamic;
-          if (dynamicState.items != null) {
-            loadedItems.addAll(List<T>.from(dynamicState.items));
-          }
-        } catch (_) {}
-
-        if (loadedItems.isEmpty) return;
-
-        if (nextIndex < loadedItems.length) {
-          _pageController.animateToPage(
-            nextIndex,
-            duration: const Duration(milliseconds: 500),
-            curve: Curves.easeInOut,
-          );
-
-          if (widget.onItemChanged != null) {
-            widget.onItemChanged!(loadedItems[nextIndex], nextIndex);
-          }
+        if (widget.onVideoStarted != null) {
+          widget.onVideoStarted!(item, index);
         }
       },
-    );
-  }
+      onDurationChanged: widget.onDurationChanged,
+      onFullscreenChanged: widget.onFullscreenChanged,
+      loadingIndicator: widget.itemLoadingIndicator,
+      onCompleted: widget.autoPlayNext
+          ? () {
+              final currentPage = _pageController.page?.round() ?? 0;
+              final nextIndex = currentPage + 1;
+              final loadedItems = <T>[];
+              final state = widget.controller.value;
 
-  bool _isVisiblePage(int index) {
-    if (!_pageController.hasClients) return index == 0;
-    return _pageController.page?.round() == index;
+              try {
+                final dynamicState = state as dynamic;
+                if (dynamicState.items != null) {
+                  loadedItems.addAll(List<T>.from(dynamicState.items));
+                }
+              } catch (_) {}
+
+              if (loadedItems.isEmpty) return;
+
+              if (nextIndex < loadedItems.length) {
+                _pageController.animateToPage(
+                  nextIndex,
+                  duration: const Duration(milliseconds: 500),
+                  curve: Curves.easeInOut,
+                );
+
+                if (widget.onItemChanged != null) {
+                  widget.onItemChanged!(loadedItems[nextIndex], nextIndex);
+                }
+              }
+            }
+          : null,
+    );
   }
 
   Widget _buildOverlay(BuildContext context, T item, int index) {
     if (widget.overlayBuilder == null) return SizedBox.shrink();
-    if (widget.expandOverlay) {
-      return SizedBox.expand(
-        child: widget.overlayBuilder?.call(context, item, index),
-      );
-    }
 
     final progressBarPadding = widget.showProgress ? 80.0 : 0.0;
 
