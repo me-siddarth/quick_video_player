@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart'
     show TargetPlatform, defaultTargetPlatform, kDebugMode;
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
 import 'package:visibility_detector/visibility_detector.dart';
@@ -207,7 +207,8 @@ class _QuickVideoPlayerState extends State<QuickVideoPlayer>
         _hasError = true;
       });
       widget.onError?.call(
-          StateError('Video URL is empty or invalid: ${widget.videoUrl}'));
+        StateError('Video URL is empty or invalid: ${widget.videoUrl}'),
+      );
       return;
     }
 
@@ -241,8 +242,9 @@ class _QuickVideoPlayerState extends State<QuickVideoPlayer>
       _controller = VideoPlayerController.networkUrl(
         Uri.parse(trimmedUrl),
         formatHint: VideoFormat.values.cast<VideoFormat?>().firstWhere(
-            (e) => e?.name == widget.videoFormat?.name,
-            orElse: () => null),
+              (e) => e?.name == widget.videoFormat?.name,
+              orElse: () => null,
+            ),
       )
         ..setLooping(widget.looping)
         ..addListener(_videoListener!);
@@ -279,10 +281,12 @@ class _QuickVideoPlayerState extends State<QuickVideoPlayer>
     _playPauseAnimation = Tween<double>(
       begin: 0.0,
       end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _playPauseAnimationController!,
-      curve: Curves.easeInOut,
-    ));
+    ).animate(
+      CurvedAnimation(
+        parent: _playPauseAnimationController!,
+        curve: Curves.easeInOut,
+      ),
+    );
   }
 
   VoidCallback get _getVideoListener {
@@ -399,7 +403,12 @@ class _QuickVideoPlayerState extends State<QuickVideoPlayer>
       }
 
       _trackVideoProgress(
-          videoId, videoTitle, positionSeconds, durationSeconds, videoCategory);
+        videoId,
+        videoTitle,
+        positionSeconds,
+        durationSeconds,
+        videoCategory,
+      );
     }
 
     if (duration > Duration.zero &&
@@ -667,11 +676,16 @@ class _QuickVideoPlayerState extends State<QuickVideoPlayer>
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Icon(Icons.error,
-                color: Colors.white.withValues(alpha: 0.5), size: 48),
+            Icon(
+              Icons.error,
+              color: Colors.white.withValues(alpha: 0.5),
+              size: 48,
+            ),
             SizedBox(height: 8),
-            Text(_errorMessage ?? 'Error loading video',
-                style: TextStyle(color: Colors.white.withValues(alpha: 0.5)))
+            Text(
+              _errorMessage ?? 'Error loading video',
+              style: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
+            ),
           ],
         ));
   }
@@ -714,8 +728,11 @@ class _QuickVideoPlayerState extends State<QuickVideoPlayer>
   Widget _playPauseControl() {
     return Center(
       child: IconButton(
-        icon: Icon(_isPlaying ? Icons.pause : Icons.play_arrow,
-            color: Colors.white, size: 48),
+        icon: Icon(
+          _isPlaying ? Icons.pause : Icons.play_arrow,
+          color: Colors.white,
+          size: 48,
+        ),
         onPressed: () {
           if (_isPlaying) {
             _controller?.pause();
@@ -954,6 +971,7 @@ class _QuickVideoPlayerState extends State<QuickVideoPlayer>
 /// Mute state for an overlay drawn on top of [QuickVideoPlayer].
 class QuickPlayerScope extends InheritedWidget {
   const QuickPlayerScope({
+    super.key,
     required this.muted,
     required this.isMuted,
     required super.child,
