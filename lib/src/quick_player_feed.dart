@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:get/get.dart';
 import 'package:infinite_scroll_pagination/infinite_scroll_pagination.dart';
 
@@ -241,31 +241,32 @@ class _QuickPlayerFeedState<T> extends State<QuickPlayerFeed<T>> {
     final progressBarPadding = widget.showProgress ? 80.0 : 0.0;
 
     return Align(
-        alignment: Alignment.bottomRight,
-        child: Wrap(
-          children: [
-            Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.bottomCenter,
-                  end: Alignment.topCenter,
-                  colors: [
-                    Colors.black.withValues(alpha: 0.8),
-                    Colors.transparent,
-                  ],
-                ),
+      alignment: Alignment.bottomRight,
+      child: Wrap(
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.bottomCenter,
+                end: Alignment.topCenter,
+                colors: [
+                  Colors.black.withValues(alpha: 0.8),
+                  Colors.transparent,
+                ],
               ),
-              padding: EdgeInsets.fromLTRB(
-                16,
-                120,
-                16,
-                (widget.bottomPadding ?? (20 + (Get.width * 0.16))) +
-                    progressBarPadding,
-              ),
-              width: double.infinity,
-              child: widget.overlayBuilder?.call(context, item, index),
             ),
-          ],
-        ));
+            padding: EdgeInsets.fromLTRB(
+              16,
+              120,
+              16,
+              (widget.bottomPadding ?? (20 + (Get.width * 0.16))) +
+                  progressBarPadding,
+            ),
+            width: double.infinity,
+            child: widget.overlayBuilder?.call(context, item, index),
+          ),
+        ],
+      ),
+    );
   }
 }
