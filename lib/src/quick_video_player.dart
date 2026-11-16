@@ -727,19 +727,22 @@ class _QuickVideoPlayerState extends State<QuickVideoPlayer>
 
   Widget _playPauseControl() {
     return Center(
-      child: IconButton(
-        icon: Icon(
-          _isPlaying ? Icons.pause : Icons.play_arrow,
-          color: Colors.white,
-          size: 48,
+      child: Material(
+        type: MaterialType.transparency,
+        child: IconButton(
+          icon: Icon(
+            _isPlaying ? Icons.pause : Icons.play_arrow,
+            color: Colors.white,
+            size: 48,
+          ),
+          onPressed: () {
+            if (_isPlaying) {
+              _controller?.pause();
+            } else {
+              _controller?.play();
+            }
+          },
         ),
-        onPressed: () {
-          if (_isPlaying) {
-            _controller?.pause();
-          } else {
-            _controller?.play();
-          }
-        },
       ),
     );
   }
