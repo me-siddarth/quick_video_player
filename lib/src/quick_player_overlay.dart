@@ -57,13 +57,16 @@ class _QuickPlayerOverlayState extends State<QuickPlayerOverlay> {
       return const SizedBox.shrink();
     }
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        Expanded(child: _detailsSection()),
-        const SizedBox(width: 16),
-        _sideActions(),
-      ],
+    return Material(
+      type: MaterialType.transparency,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Expanded(child: _detailsSection()),
+          const SizedBox(width: 16),
+          _sideActions(),
+        ],
+      ),
     );
   }
 
